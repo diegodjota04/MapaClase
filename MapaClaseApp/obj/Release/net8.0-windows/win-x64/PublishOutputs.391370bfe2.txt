@@ -1,0 +1,7 @@
+C:\Users\diego\MapaClaseApp\mapaclaseapp\Ejecutable\MapaClaseApp.pdb
+C:\Users\diego\MapaClaseApp\mapaclaseapp\Ejecutable\D3DCompiler_47_cor3.dll
+C:\Users\diego\MapaClaseApp\mapaclaseapp\Ejecutable\PenImc_cor3.dll
+C:\Users\diego\MapaClaseApp\mapaclaseapp\Ejecutable\PresentationNative_cor3.dll
+C:\Users\diego\MapaClaseApp\mapaclaseapp\Ejecutable\vcruntime140_cor3.dll
+C:\Users\diego\MapaClaseApp\mapaclaseapp\Ejecutable\wpfgfx_cor3.dll
+C:\Users\diego\MapaClaseApp\mapaclaseapp\Ejecutable\MapaClaseApp.exe
