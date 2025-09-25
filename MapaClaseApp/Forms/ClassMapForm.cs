@@ -8,6 +8,14 @@ namespace MapaClaseApp.Forms
 {
     public partial class ClassMapForm : Form
     {
+        #region Constantes de UI
+        private const int CONTROL_PANEL_HEIGHT = 70;
+        private const int BUTTON_HEIGHT = 35;
+        private const int BUTTON_SPACING = 10;
+        private const int COMBO_WIDTH_SMALL = 45;
+        private const int COMBO_WIDTH_MEDIUM = 100;
+        private const int LABEL_HEIGHT = 20;
+        #endregion
         #region Variables de Clase
         private List<Student> students = new List<Student>();
         private List<Group> groups = new List<Group>();
@@ -58,218 +66,311 @@ namespace MapaClaseApp.Forms
         #endregion
         
         #region Creación de Interfaz de Usuario
-        
-       
+        #region Creación de Interfaz de Usuario
 
-// REEMPLAZAR COMPLETAMENTE el método CreateMenuAndButtons() con esta versión simplificada:
-
-private void CreateMenuAndButtons()
+/// <summary>
+/// Crea el menú y los botones de control principales
+/// </summary>
+    private void CreateMenuAndButtons()
 {
-    // Panel superior para controles - UNA SOLA LÍNEA
-    Panel controlPanel = new Panel
+    Panel controlPanel = CreateControlPanel();
+    
+    // Crear contenedor para organizar controles
+    var controls = new List<Control>();
+    
+    // Agregar secciones de controles
+    int currentX = 10;
+    currentX = AddConfigurationSection(controls, currentX);
+    currentX = AddSeparator(controls, currentX);
+    currentX = AddActionButtons(controls, currentX);
+    AddInfoLabel(controls, currentX + 20);
+    
+    // Agregar todos los controles al panel
+    controlPanel.Controls.AddRange(controls.ToArray());
+    this.Controls.Add(controlPanel);
+}
+
+/// <summary>
+/// Crea el panel principal de controles
+/// </summary>
+private Panel CreateControlPanel()
+{
+    return new Panel
     {
         Dock = DockStyle.Top,
-        Height = 70, // Reducido a una línea
+        Height = CONTROL_PANEL_HEIGHT,
         BackColor = Color.FromArgb(245, 245, 245)
     };
+}
+
+/// <summary>
+/// Agrega la sección de configuración (ComboBoxes)
+/// </summary>
+private int AddConfigurationSection(List<Control> controls, int startX)
+{
+    int x = startX;
+    int y = 20; // Posición Y fija para todos los controles
     
-    int x = 10; // Posición X inicial
-    int y = 20; // Centrado verticalmente
-    int spacing = 10; // Espacio entre controles
+    // ComboBox 1: Hileras
+    var (lblRows, cmbRows) = CreateLabeledComboBox(
+        "Por hilera:", 
+        x, y, 60, COMBO_WIDTH_SMALL,
+        Enumerable.Range(2, 7).Cast<object>().ToArray(), // 2 a 8
+        2 // índice 2 = valor 4
+    );
+    controls.Add(lblRows);
+    controls.Add(cmbRows);
+    x += 65 + COMBO_WIDTH_SMALL + BUTTON_SPACING;
     
-    // ===== COMBOBOX 1: HILERAS =====
-    Label lblRows = new Label
+    // Guardar referencia
+    cmbRows.Name = "cmbRowSize";
+    cmbRows.Tag = "RowSize";
+    
+    // ComboBox 2: Estilo
+    var (lblStyle, cmbStyle) = CreateLabeledComboBox(
+        "Estilo:",
+        x, y, 35, COMBO_WIDTH_MEDIUM,
+        new object[] { "Hileras", "Forma U", "Círculo", "Grupos" },
+        0
+    );
+    controls.Add(lblStyle);
+    controls.Add(cmbStyle);
+    x += 40 + COMBO_WIDTH_MEDIUM + BUTTON_SPACING;
+    
+    // Guardar referencia
+    cmbStyle.Name = "cmbClassroomStyle";
+    cmbStyle.Tag = "Style";
+    
+    // ComboBox 3: Tamaño de grupo
+    var (lblGroupSize, cmbGroupSizeLocal) = CreateLabeledComboBox(
+        "Tamaño:",
+        x, y, 50, COMBO_WIDTH_SMALL,
+        Enumerable.Range(2, 7).Cast<object>().ToArray(), // 2 a 8
+        0
+    );
+    controls.Add(lblGroupSize);
+    controls.Add(cmbGroupSizeLocal);
+    x += 55 + COMBO_WIDTH_SMALL + BUTTON_SPACING;
+    
+    // Asignar a la variable de clase y guardar referencia
+    this.cmbGroupSize = cmbGroupSizeLocal;
+    cmbGroupSizeLocal.Name = "cmbGroupSize";
+    cmbGroupSizeLocal.Tag = "GroupSize";
+    
+    return x;
+}
+
+/// <summary>
+/// Crea un Label y ComboBox emparejados
+/// </summary>
+private (Label label, ComboBox combo) CreateLabeledComboBox(
+    string labelText, int x, int y, int labelWidth, int comboWidth,
+    object[] items, int selectedIndex)
+{
+    var label = new Label
     {
-        Text = "Por hilera:",
+        Text = labelText,
         Location = new Point(x, y + 3),
-        Size = new Size(60, 20),
+        Size = new Size(labelWidth, LABEL_HEIGHT),
         ForeColor = Color.DarkSlateGray,
         Font = new Font("Segoe UI", 8.5F)
     };
-    x += 65;
     
-    ComboBox cmbRowSize = new ComboBox
+    var combo = new ComboBox
     {
-        Location = new Point(x, y),
-        Size = new Size(45, 25),
+        Location = new Point(x + labelWidth + 5, y),
+        Size = new Size(comboWidth, 25),
         DropDownStyle = ComboBoxStyle.DropDownList,
         BackColor = Color.White,
-        Font = new Font("Segoe UI", 9F)
+        Font = new Font("Segoe UI", comboWidth > 50 ? 8.5F : 9F)
     };
-    for (int i = 2; i <= 8; i++)
-        cmbRowSize.Items.Add(i);
-    cmbRowSize.SelectedIndex = 2; // 4 por defecto
-    x += 55;
     
-    // ===== COMBOBOX 2: ESTILO =====
-    Label lblStyle = new Label
-    {
-        Text = "Estilo:",
-        Location = new Point(x, y + 3),
-        Size = new Size(35, 20),
-        ForeColor = Color.DarkSlateGray,
-        Font = new Font("Segoe UI", 8.5F)
-    };
-    x += 40;
+    combo.Items.AddRange(items);
+    combo.SelectedIndex = selectedIndex;
     
-    ComboBox cmbClassroomStyle = new ComboBox
+    return (label, combo);
+}
+
+/// <summary>
+/// Agrega un separador visual
+/// </summary>
+private int AddSeparator(List<Control> controls, int x)
+{
+    var separator = new Panel
     {
-        Location = new Point(x, y),
-        Size = new Size(100, 25),
-        DropDownStyle = ComboBoxStyle.DropDownList,
-        BackColor = Color.White,
-        Font = new Font("Segoe UI", 8.5F)
-    };
-    cmbClassroomStyle.Items.AddRange(new string[] {
-        "Hileras",
-        "Forma U", 
-        "Círculo",
-        "Grupos"
-    });
-    cmbClassroomStyle.SelectedIndex = 0;
-    x += 110;
-    
-    // ===== COMBOBOX 3: TAMAÑO GRUPO =====
-    Label lblGroupSize = new Label
-    {
-        Text = "Tamaño:",
-        Location = new Point(x, y + 3),
-        Size = new Size(50, 20),
-        ForeColor = Color.DarkSlateGray,
-        Font = new Font("Segoe UI", 8.5F)
-    };
-    x += 55;
-    
-    cmbGroupSize = new ComboBox
-    {
-        Location = new Point(x, y),
-        Size = new Size(45, 25),
-        DropDownStyle = ComboBoxStyle.DropDownList,
-        BackColor = Color.White,
-        Font = new Font("Segoe UI", 9F)
-    };
-    for (int i = 2; i <= 8; i++)
-        cmbGroupSize.Items.Add(i);
-    cmbGroupSize.SelectedIndex = 0;
-    x += 55;
-    
-    // ===== SEPARADOR VISUAL =====
-    Panel separator = new Panel
-    {
-        Location = new Point(x, y - 5),
+        Location = new Point(x, 15),
         Size = new Size(2, 35),
         BackColor = Color.LightGray
     };
-    x += 12;
+    controls.Add(separator);
     
-    // ===== BOTÓN 1: CARGAR IMÁGENES =====
-    Button btnLoadImages = new Button
-    {
-        Text = "📁 Cargar",
-        Location = new Point(x, y - 5),
-        Size = new Size(80, 35),
-        BackColor = Color.FromArgb(70, 130, 180),
-        ForeColor = Color.White,
-        FlatStyle = FlatStyle.Flat,
-        Font = new Font("Segoe UI", 9F, FontStyle.Bold)
-    };
-    btnLoadImages.FlatAppearance.BorderSize = 0;
+    return x + 12;
+}
+
+/// <summary>
+/// Agrega todos los botones de acción
+/// </summary>
+private int AddActionButtons(List<Control> controls, int startX)
+{
+    int x = startX;
+    int y = 15; // Posición Y para botones
+    
+    // Botón 1: Cargar Imágenes
+    var btnLoadImages = CreateStyledButton("📁 Cargar", x, y, 80, Color.FromArgb(70, 130, 180));
     btnLoadImages.Click += BtnLoadImages_Click;
-    x += 90;
+    controls.Add(btnLoadImages);
+    x += 80 + BUTTON_SPACING;
     
-    // ===== BOTÓN 2: ORGANIZAR (UNIFICADO) =====
-    Button btnOrganize = new Button
-    {
-        Text = "📐 Organizar",
-        Location = new Point(x, y - 5),
-        Size = new Size(90, 35),
-        BackColor = Color.FromArgb(75, 0, 130),
-        ForeColor = Color.White,
-        FlatStyle = FlatStyle.Flat,
-        Font = new Font("Segoe UI", 9F, FontStyle.Bold)
-    };
-    btnOrganize.FlatAppearance.BorderSize = 0;
-    btnOrganize.Click += (s, e) => OrganizeStudents(cmbRowSize, cmbClassroomStyle, cmbGroupSize);
-    x += 100;
+    // Botón 2: Organizar
+    var btnOrganize = CreateStyledButton("📐 Organizar", x, y, 90, Color.FromArgb(75, 0, 130));
+    btnOrganize.Click += BtnOrganize_Click;
+    controls.Add(btnOrganize);
+    x += 90 + BUTTON_SPACING;
     
-    // ===== BOTÓN 3: GUARDAR PDF =====
-    Button btnSavePdf = new Button
-    {
-        Text = "📄 Guardar",
-        Location = new Point(x, y - 5),
-        Size = new Size(90, 35),
-        BackColor = Color.FromArgb(220, 20, 60),
-        ForeColor = Color.White,
-        FlatStyle = FlatStyle.Flat,
-        Font = new Font("Segoe UI", 9F, FontStyle.Bold)
-    };
-    btnSavePdf.FlatAppearance.BorderSize = 0;
-    btnSavePdf.Click += (s, e) => ExportQuickPdf();
-    x += 100;
+    // Botón 3: Guardar PDF
+    var btnSavePdf = CreateStyledButton("📄 Guardar", x, y, 90, Color.FromArgb(220, 20, 60));
+    btnSavePdf.Click += BtnSavePdf_Click;
+    controls.Add(btnSavePdf);
+    x += 90 + BUTTON_SPACING;
     
-    // ===== BOTÓN 4: CARGAR LAYOUT =====
-    Button btnLoadLayout = new Button
-    {
-        Text = "📂 Cargar",
-        Location = new Point(x, y - 5),
-        Size = new Size(80, 35),
-        BackColor = Color.FromArgb(106, 90, 205),
-        ForeColor = Color.White,
-        FlatStyle = FlatStyle.Flat,
-        Font = new Font("Segoe UI", 9F, FontStyle.Bold)
-    };
-    btnLoadLayout.FlatAppearance.BorderSize = 0;
+    // Botón 4: Cargar Layout
+    var btnLoadLayout = CreateStyledButton("📂 Cargar", x, y, 80, Color.FromArgb(106, 90, 205));
     btnLoadLayout.Click += BtnLoadLayout_Click;
-    x += 90;
+    controls.Add(btnLoadLayout);
+    x += 80 + BUTTON_SPACING;
     
-    // ===== BOTÓN 5: LIMPIAR =====
-    Button btnClear = new Button
-    {
-        Text = "🗑️ Limpiar",
-        Location = new Point(x, y - 5),
-        Size = new Size(80, 35),
-        BackColor = Color.FromArgb(255, 140, 0),
-        ForeColor = Color.White,
-        FlatStyle = FlatStyle.Flat,
-        Font = new Font("Segoe UI", 9F, FontStyle.Bold)
-    };
-    btnClear.FlatAppearance.BorderSize = 0;
+    // Botón 5: Limpiar Grupos
+    var btnClear = CreateStyledButton("🗑️ Limpiar", x, y, 80, Color.FromArgb(255, 140, 0));
     btnClear.Click += BtnClearGroups_Click;
-    x += 90;
+    controls.Add(btnClear);
+    x += 80 + BUTTON_SPACING;
     
-    // ===== BOTÓN 6: REINICIAR =====
-    Button btnReset = new Button
+    // Botón 6: Reiniciar
+    var btnReset = CreateStyledButton("🔄 Reiniciar", x, y, 80, Color.FromArgb(128, 128, 128));
+    btnReset.Click += BtnReset_Click;
+    controls.Add(btnReset);
+    x += 80 + BUTTON_SPACING;
+    
+    return x;
+}
+
+/// <summary>
+/// Crea un botón con estilo consistente
+/// </summary>
+private Button CreateStyledButton(string text, int x, int y, int width, Color color)
+{
+    var button = new Button
     {
-        Text = "🔄 Reiniciar",
-        Location = new Point(x, y - 5),
-        Size = new Size(80, 35),
-        BackColor = Color.FromArgb(128, 128, 128),
+        Text = text,
+        Location = new Point(x, y),
+        Size = new Size(width, BUTTON_HEIGHT),
+        BackColor = color,
         ForeColor = Color.White,
         FlatStyle = FlatStyle.Flat,
-        Font = new Font("Segoe UI", 9F, FontStyle.Bold)
+        Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+        Cursor = Cursors.Hand
     };
-    btnReset.FlatAppearance.BorderSize = 0;
-    btnReset.Click += BtnReset_Click;
-    x += 90;
     
-    // ===== INFORMACIÓN =====
-    Label lblInfo = new Label
+    button.FlatAppearance.BorderSize = 0;
+    button.FlatAppearance.MouseOverBackColor = ControlPaint.Light(color, 0.2f);
+    button.FlatAppearance.MouseDownBackColor = ControlPaint.Dark(color, 0.1f);
+    
+    return button;
+}
+
+/// <summary>
+/// Agrega la etiqueta de información
+/// </summary>
+private void AddInfoLabel(List<Control> controls, int x)
+{
+    var lblInfo = new Label
     {
         Text = "💡 Configura → Carga fotos → Organiza → Guarda PDF",
-        Location = new Point(x + 20, y + 3),
-        Size = new Size(300, 20),
+        Location = new Point(x, 23),
+        Size = new Size(300, LABEL_HEIGHT),
         ForeColor = Color.Gray,
         Font = new Font("Segoe UI", 8F, FontStyle.Italic)
     };
-    
-    // Agregar todos los controles
-    controlPanel.Controls.AddRange(new Control[] { 
-        lblRows, cmbRowSize, lblStyle, cmbClassroomStyle, lblGroupSize, cmbGroupSize,
-        separator, btnLoadImages, btnOrganize, btnSavePdf, btnLoadLayout, btnClear, btnReset, lblInfo
-    });
-    
-    this.Controls.Add(controlPanel);
+    controls.Add(lblInfo);
 }
+
+/// <summary>
+/// Manejador del botón Organizar
+/// </summary>
+private void BtnOrganize_Click(object? sender, EventArgs e)
+{
+    // Buscar los ComboBoxes por su Tag
+    ComboBox? cmbRowSize = null;
+    ComboBox? cmbStyle = null;
+    
+    foreach (Control control in this.Controls)
+    {
+        if (control is Panel panel)
+        {
+            foreach (Control child in panel.Controls)
+            {
+                if (child is ComboBox combo)
+                {
+                    switch (combo.Tag?.ToString())
+                    {
+                        case "RowSize":
+                            cmbRowSize = combo;
+                            break;
+                        case "Style":
+                            cmbStyle = combo;
+                            break;
+                    }
+                }
+            }
+        }
+    }
+    
+    if (cmbRowSize != null && cmbStyle != null && cmbGroupSize != null)
+    {
+        OrganizeStudents(cmbRowSize, cmbStyle, cmbGroupSize);
+    }
+    else
+    {
+        MessageBox.Show("Error al encontrar los controles de configuración.", 
+                       "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    }
+}
+
+/// <summary>
+/// Manejador del botón Guardar PDF
+/// </summary>
+private void BtnSavePdf_Click(object? sender, EventArgs e)
+{
+    ExportQuickPdf();
+}
+
+/// <summary>
+/// Método auxiliar para obtener un ComboBox por su Tag
+/// </summary>
+private ComboBox? GetComboBoxByTag(string tag)
+{
+    foreach (Control control in this.Controls)
+    {
+        if (control is Panel panel)
+        {
+            foreach (Control child in panel.Controls)
+            {
+                if (child is ComboBox combo && combo.Tag?.ToString() == tag)
+                {
+                    return combo;
+                }
+            }
+        }
+    }
+    return null;
+}
+
+#endregion 
+       
+
+
+
+
         
         #endregion
         
@@ -290,60 +391,111 @@ private void CreateMenuAndButtons()
             }
         }
         
-        private void LoadStudentImages(string[] filePaths)
-        {
-            // Limpiar datos existentes
-            students.Clear();
-            groups.Clear();
-            
-            int x = 50, y = 90; // espacio panel más grande
-            int maxWidth = this.ClientSize.Width - 150;
-            int loadedCount = 0;
-            
-            foreach (string filePath in filePaths)
-            {
-                try
-                {
-                    // Obtener nombre sin extensión
-                    string studentName = Path.GetFileNameWithoutExtension(filePath);
-                    
-                    // Cargar y redimensionar imagen
-                    using var originalImage = Image.FromFile(filePath);
-                    Image resizedImage = ResizeImage(originalImage, 80, 100);
-                    
-                    // Crear estudiante
-                    Student student = new Student(studentName, resizedImage)
-                    {
-                        Position = new Point(x, y)
-                    };
-                    
-                    students.Add(student);
-                    loadedCount++;
-                    
-                    // Calcular posición siguiente
-                    x += 90;
-                    if (x > maxWidth)
-                    {
-                        x = 50;
-                        y += 120;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error cargando {Path.GetFileName(filePath)}: {ex.Message}", 
-                                  "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
-            }
-            
-            if (loadedCount > 0)
-            {
-                MessageBox.Show($"Se cargaron {loadedCount} estudiantes exitosamente.", 
-                              "Carga completada", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            
-            this.Invalidate();
-        }
+private void LoadStudentImages(string[] filePaths)
+{
+    const int MAX_STUDENTS = 100;
+    
+    // Validar cantidad de archivos
+    if (filePaths.Length > MAX_STUDENTS)
+    {
+        DialogResult result = MessageBox.Show(
+            $"Has seleccionado {filePaths.Length} archivos.\n" +
+            $"El límite es {MAX_STUDENTS} estudiantes.\n\n" +
+            $"¿Cargar solo los primeros {MAX_STUDENTS}?",
+            "Demasiados archivos",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question
+        );
         
+        if (result == DialogResult.No) return;
+        
+        // Tomar solo los primeros MAX_STUDENTS
+        filePaths = filePaths.Take(MAX_STUDENTS).ToArray();
+    }
+    
+    // Liberar imágenes existentes
+    DisposeAllImages();
+    students.Clear();
+    groups.Clear();
+    
+    int x = 50, y = 90;
+    int maxWidth = this.ClientSize.Width - 150;
+    int loadedCount = 0;
+    int skippedCount = 0;
+    
+    foreach (string filePath in filePaths)
+    {
+        try
+        {
+            // Validar archivo antes de cargarlo
+            if (!ValidateImageFile(filePath))
+            {
+                skippedCount++;
+                continue;
+            }
+            
+            string studentName = Path.GetFileNameWithoutExtension(filePath);
+            
+            // Cargar y redimensionar con liberación automática
+            Image resizedImage;
+            using (var fileStream = File.OpenRead(filePath))
+            using (var originalImage = Image.FromStream(fileStream))
+            {
+                resizedImage = ResizeImage(originalImage, 80, 100);
+            }
+            
+            Student student = new Student(studentName, resizedImage)
+            {
+                Position = new Point(x, y)
+            };
+            
+            students.Add(student);
+            loadedCount++;
+            
+            // Calcular siguiente posición
+            x += 90;
+            if (x > maxWidth)
+            {
+                x = 50;
+                y += 120;
+            }
+        }
+        catch (OutOfMemoryException)
+        {
+            MessageBox.Show(
+                "No hay suficiente memoria para cargar más imágenes.\n" +
+                "Intenta con imágenes más pequeñas o menos archivos.",
+                "Memoria insuficiente",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            );
+            break; // Detener carga
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error cargando {Path.GetFileName(filePath)}: {ex.Message}", 
+                          "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            skippedCount++;
+        }
+    }
+    
+    // Mostrar resumen
+    string message = $"Carga completada:\n" +
+                    $"✓ {loadedCount} estudiantes cargados";
+    
+    if (skippedCount > 0)
+    {
+        message += $"\n✗ {skippedCount} archivos omitidos";
+    }
+    
+    if (loadedCount > 0)
+    {
+        MessageBox.Show(message, "Resultado de carga", 
+                      MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+    
+    this.Invalidate();
+}
         private static Image ResizeImage(Image image, int width, int height)
         {
             Bitmap resized = new Bitmap(width, height);
@@ -454,7 +606,7 @@ private void OrganizeStudents(ComboBox cmbRowSize, ComboBox cmbClassroomStyle, C
     
     int studentsPerRow = (int)cmbRowSize.SelectedItem;
     int groupSize = (int)cmbGroupSize.SelectedItem;
-    string style = cmbClassroomStyle.SelectedItem.ToString();
+    string style = (string)cmbClassroomStyle.SelectedItem;
     
     // Limpiar grupos existentes
     groups.Clear();
@@ -1172,12 +1324,21 @@ private void OpenFile(string filePath)
     }
 }
 
-#endregion
-        
-        
-                
+        #endregion
+
+
+
         #region Utilidades
-        
+
+        /// Libera todas las imágenes cargadas en memoria
+        private void DisposeAllImages()
+        {
+            foreach (var student in students)
+            {
+                student.Photo?.Dispose();
+                student.Photo = null;
+            }
+        }
         private void BtnReset_Click(object? sender, EventArgs e)
         {
             if (students.Any())
@@ -1191,11 +1352,8 @@ private void OpenFile(string filePath)
                 
                 if (result == DialogResult.Yes)
                 {
-                    // Liberar recursos de imágenes
-                    foreach (var student in students)
-                    {
-                        student.Photo?.Dispose();
-                    }
+                    // CAMBIAR: Usar el método centralizado
+                    DisposeAllImages();
                     
                     students.Clear();
                     groups.Clear();
@@ -1205,19 +1363,58 @@ private void OpenFile(string filePath)
             else
             {
                 MessageBox.Show("No hay nada que reiniciar.", 
-                              "Información", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            "Información", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
         
         protected override void OnFormClosed(FormClosedEventArgs e)
+{
+    // CAMBIAR: Usar el método centralizado
+    DisposeAllImages();
+    base.OnFormClosed(e);
+}
+
+// ========================================
+// AGREGAR: Límites de seguridad
+// ========================================
+
+private bool ValidateImageFile(string filePath)
+{
+    const long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    
+    try
+    {
+        var fileInfo = new FileInfo(filePath);
+        
+        // Verificar tamaño
+        if (fileInfo.Length > MAX_FILE_SIZE)
         {
-            // Liberar recursos al cerrar
-            foreach (var student in students)
-            {
-                student.Photo?.Dispose();
-            }
-            base.OnFormClosed(e);
+            MessageBox.Show($"El archivo {fileInfo.Name} excede el tamaño máximo de 10MB", 
+                          "Archivo muy grande", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
         }
+        
+        // Verificar extensión
+        var validExtensions = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif" };
+        var extension = fileInfo.Extension.ToLower();
+        
+        if (!validExtensions.Contains(extension))
+        {
+            MessageBox.Show($"Formato no soportado: {extension}", 
+                          "Formato inválido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
+        
+        return true;
+    }
+    catch (Exception ex)
+    {
+        MessageBox.Show($"Error validando archivo: {ex.Message}", 
+                      "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        return false;
+    }
+}
+
         
         #endregion
     }
