@@ -18,3 +18,4 @@ C:\Users\diego\MapaClaseApp\mapaclaseapp\obj\Debug\net8.0-windows\refint\MapaCla
 C:\Users\diego\MapaClaseApp\mapaclaseapp\obj\Debug\net8.0-windows\MapaClaseApp.pdb
 C:\Users\diego\MapaClaseApp\mapaclaseapp\obj\Debug\net8.0-windows\MapaClaseApp.genruntimeconfig.cache
 C:\Users\diego\MapaClaseApp\mapaclaseapp\obj\Debug\net8.0-windows\ref\MapaClaseApp.dll
+C:\Users\diego\MapaClaseApp\MapaClaseApp\obj\Debug\net8.0-windows\MapaClaseApp.sourcelink.json

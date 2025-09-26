@@ -39,6 +39,67 @@ namespace MapaClaseApp.Forms
         private ComboBox? cmbGroupSize;
         #endregion
         
+        private class UShapeOrganizer : BaseOrganizer
+        {
+            public UShapeOrganizer(ClassMapForm form) : base(form) { }
+            
+            public override void Organize(List<Student> students, int parameter1, int parameter2)
+            {
+                var orderedStudents = OrderStudentsByName(students);
+                
+                int centerX = form.ClientSize.Width / 2;
+                int startY = 120;
+                int spacing = 100;
+                int armLength = Math.Min(6, orderedStudents.Count / 3);
+                
+                int index = 0;
+                
+                // Brazo izquierdo
+                PlaceStudentsVertically(orderedStudents, ref index, 
+                    centerX - 250, startY, spacing, armLength);
+                
+                // Base
+                int baseY = startY + (armLength * spacing) + 50;
+                PlaceStudentsHorizontally(orderedStudents, ref index,
+                    centerX - 200, baseY, 400, Math.Min(5, orderedStudents.Count - index));
+                
+                // Brazo derecho (hacia arriba)
+                int remaining = orderedStudents.Count - index;
+                for (int i = 0; i < remaining; i++)
+                {
+                    orderedStudents[index].Position = new Point(
+                        centerX + 250,
+                        baseY - 50 - (i * spacing)
+                    );
+                    index++;
+                }
+            }
+            
+            private void PlaceStudentsVertically(List<Student> students, ref int index, 
+                int x, int startY, int spacing, int count)
+            {
+                for (int i = 0; i < count && index < students.Count; i++)
+                {
+                    students[index].Position = new Point(x, startY + (i * spacing));
+                    index++;
+                }
+            }
+            
+            private void PlaceStudentsHorizontally(List<Student> students, ref int index,
+                int startX, int y, int totalWidth, int count)
+            {
+                if (count <= 0) return;
+                
+                int spacing = count > 1 ? totalWidth / (count - 1) : 0;
+                
+                for (int i = 0; i < count && index < students.Count; i++)
+                {
+                    students[index].Position = new Point(startX + (i * spacing), y);
+                    index++;
+                }
+            }
+        }
+
         #region Constructor e Inicialización
         public ClassMapForm()
         {
@@ -577,354 +638,128 @@ private void LoadStudentImages(string[] filePaths)
         #endregion
 
         #region Generación de Grupos
-
-
-
-        /// <summary>
-        /// Organiza estudiantes en hileras con número específico por fila
-        /// </summary>
-// ===== AGREGAR ESTOS MÉTODOS EN LA REGIÓN #region Generación de Grupos =====
-
-/// <summary>
-/// Método unificado para organizar estudiantes según la configuración seleccionada
-/// </summary>
-private void OrganizeStudents(ComboBox cmbRowSize, ComboBox cmbClassroomStyle, ComboBox cmbGroupSize)
+private class CircleOrganizer : BaseOrganizer
 {
-    if (!students.Any())
+    public CircleOrganizer(ClassMapForm form) : base(form) { }
+    
+    public override void Organize(List<Student> students, int parameter1, int parameter2)
     {
-        MessageBox.Show("Primero carga las imágenes de los estudiantes.", 
-                       "Sin estudiantes", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        return;
-    }
-    
-    if (cmbRowSize.SelectedItem == null || cmbClassroomStyle.SelectedItem == null || cmbGroupSize.SelectedItem == null)
-    {
-        MessageBox.Show("Por favor selecciona todas las opciones antes de organizar.", 
-                       "Configuración incompleta", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        return;
-    }
-    
-    int studentsPerRow = (int)cmbRowSize.SelectedItem;
-    int groupSize = (int)cmbGroupSize.SelectedItem;
-    string style = (string)cmbClassroomStyle.SelectedItem;
-    
-    // Limpiar grupos existentes
-    groups.Clear();
-    students.ForEach(s => s.GroupId = -1);
-    
-    // Organizar según estilo seleccionado
-    switch (style)
-    {
-        case "Hileras":
-            ArrangeStudentsInRows(studentsPerRow);
-            ShowOrganizeResult($"Estudiantes organizados en hileras de {studentsPerRow}");
-            break;
-            
-        case "Forma U":
-            ArrangeUShapedCorrected();
-            ShowOrganizeResult("Estudiantes organizados en forma de U");
-            break;
-            
-        case "Círculo":
-            ArrangeCircleCorrected();
-            ShowOrganizeResult("Estudiantes organizados en círculo");
-            break;
-            
-        case "Grupos":
-            ArrangeInSmallGroupsThenCreateGroups(groupSize);
-            ShowOrganizeResult($"Estudiantes organizados en grupos de {groupSize} y grupos creados automáticamente");
-            break;
-    }
-    
-    this.Invalidate();
-}
-
-/// <summary>
-/// Muestra resultado de la organización
-/// </summary>
-private void ShowOrganizeResult(string message)
-{
-    MessageBox.Show($"{message}\n\n" +
-                   $"Total: {students.Count} estudiantes\n" +
-                   $"Grupos activos: {groups.Count}",
-                   "Organización Completada", MessageBoxButtons.OK, MessageBoxIcon.Information);
-}
-
-/// <summary>
-/// Disposición en U corregida
-/// </summary>
-private void ArrangeUShapedCorrected()
-{
-    var orderedStudents = students.OrderBy(s => s.Name).ToList();
-    
-    int centerX = this.ClientSize.Width / 2;
-    int startY = 120; // Debajo del panel
-    int spacing = 100;
-    int armLength = Math.Min(6, orderedStudents.Count / 3); // Máximo 6 por brazo
-    
-    int index = 0;
-    
-    // BRAZO IZQUIERDO (de arriba hacia abajo)
-    int leftArmCount = Math.Min(armLength, orderedStudents.Count - index);
-    for (int i = 0; i < leftArmCount; i++)
-    {
-        int x = centerX - 250; // Posición fija del brazo izquierdo
-        int y = startY + (i * spacing);
-        orderedStudents[index].Position = new Point(x, y);
-        index++;
-    }
-    
-    // BASE DE LA U (de izquierda a derecha)
-    int baseY = startY + (leftArmCount * spacing) + 50; // Un poco más abajo
-    int studentsInBase = Math.Min(5, orderedStudents.Count - index); // Máximo 5 en la base
-    int baseStartX = centerX - 200;
-    int baseSpacing = 400 / Math.Max(1, studentsInBase - 1); // Distribuir en 400px
-    
-    for (int i = 0; i < studentsInBase; i++)
-    {
-        int x = baseStartX + (i * baseSpacing);
-        int y = baseY;
-        orderedStudents[index].Position = new Point(x, y);
-        index++;
-    }
-    
-    // BRAZO DERECHO (de abajo hacia arriba)
-    int rightArmCount = orderedStudents.Count - index;
-    for (int i = 0; i < rightArmCount; i++)
-    {
-        int x = centerX + 250; // Posición fija del brazo derecho
-        int y = baseY - 50 - (i * spacing); // Empezar desde abajo hacia arriba
-        orderedStudents[index].Position = new Point(x, y);
-        index++;
-    }
-}
-
-/// <summary>
-/// Disposición en círculo corregida
-/// </summary>
-private void ArrangeCircleCorrected()
-{
-    var orderedStudents = students.OrderBy(s => s.Name).ToList();
-    
-    int centerX = this.ClientSize.Width / 2;
-    int centerY = (this.ClientSize.Height + 120) / 2; // Ajustado por el panel superior
-    int radius = Math.Min(centerX - 150, centerY - 100); // Radio más conservador
-    
-    double angleStep = 2 * Math.PI / orderedStudents.Count;
-    
-    for (int i = 0; i < orderedStudents.Count; i++)
-    {
-        double angle = i * angleStep - Math.PI / 2; // Empezar desde arriba (12 en punto)
+        var orderedStudents = OrderStudentsByName(students);
         
-        int x = centerX + (int)(radius * Math.Cos(angle)) - orderedStudents[i].Size.Width / 2;
-        int y = centerY + (int)(radius * Math.Sin(angle)) - orderedStudents[i].Size.Height / 2;
+        int centerX = form.ClientSize.Width / 2;
+        int centerY = (form.ClientSize.Height + 120) / 2;
+        int radius = Math.Min(centerX - 150, centerY - 100);
         
-        // Asegurar que esté dentro de los límites
-        x = Math.Max(10, Math.Min(x, this.ClientSize.Width - orderedStudents[i].Size.Width - 10));
-        y = Math.Max(120, Math.Min(y, this.ClientSize.Height - orderedStudents[i].Size.Height - 10));
+        double angleStep = 2 * Math.PI / orderedStudents.Count;
         
-        orderedStudents[i].Position = new Point(x, y);
-    }
-}
-
-/// <summary>
-/// Organiza en grupos pequeños Y crea los grupos automáticamente
-/// </summary>
-private void ArrangeInSmallGroupsThenCreateGroups(int groupSize)
-{
-    var orderedStudents = students.OrderBy(s => s.Name).ToList();
-    
-    // ===== CONFIGURACIÓN MEJORADA PARA EVITAR SUPERPOSICIÓN =====
-    int groupsPerRow = 2; // Reducido de 3 a 2 para más espacio
-    int groupSpacingX = Math.Max(300, this.ClientSize.Width / 3); // Espaciado dinámico
-    int groupSpacingY = 280; // Aumentado de 200 a 280
-    int studentSpacingX = 100; // Espacio entre estudiantes en el grupo
-    int studentSpacingY = 120; // Espacio vertical entre estudiantes
-    int startX = 50; // Margen inicial
-    int startY = 100; // Debajo del panel
-    
-    int totalGroups = (int)Math.Ceiling((double)orderedStudents.Count / groupSize);
-    int studentIndex = 0;
-    
-    // Limpiar grupos existentes
-    groups.Clear();
-    
-    // Organizar visualmente y crear grupos
-    for (int groupIndex = 0; groupIndex < totalGroups && studentIndex < orderedStudents.Count; groupIndex++)
-    {
-        // Crear grupo
-        Color groupColor = groupColors[groupIndex % groupColors.Length];
-        Group group = new Group(groupIndex, groupColor);
-        
-        // Calcular posición del grupo
-        int groupRow = groupIndex / groupsPerRow;
-        int groupCol = groupIndex % groupsPerRow;
-        
-        int groupX = startX + (groupCol * groupSpacingX);
-        int groupY = startY + (groupRow * groupSpacingY);
-        
-        // Verificar que el grupo no se salga de la pantalla
-        if (groupX + (2 * studentSpacingX) > this.ClientSize.Width)
+        for (int i = 0; i < orderedStudents.Count; i++)
         {
-            // Si se sale, ajustar a una sola columna
-            groupsPerRow = 1;
-            groupX = startX;
-            groupY = startY + (groupIndex * groupSpacingY);
+            double angle = i * angleStep - Math.PI / 2; // Empezar desde arriba
+            
+            int x = centerX + (int)(radius * Math.Cos(angle)) - orderedStudents[i].Size.Width / 2;
+            int y = centerY + (int)(radius * Math.Sin(angle)) - orderedStudents[i].Size.Height / 2;
+            
+            // Asegurar límites
+            x = Math.Max(10, Math.Min(x, form.ClientSize.Width - orderedStudents[i].Size.Width - 10));
+            y = Math.Max(120, Math.Min(y, form.ClientSize.Height - orderedStudents[i].Size.Height - 10));
+            
+            orderedStudents[i].Position = new Point(x, y);
         }
+    }
+}
+
+/// <summary>
+/// Organizador en grupos pequeños
+/// </summary>
+private class GroupOrganizer : BaseOrganizer
+{
+    public GroupOrganizer(ClassMapForm form) : base(form) { }
+    
+    public override void Organize(List<Student> students, int groupSize, int parameter2)
+    {
+        var orderedStudents = OrderStudentsByName(students);
         
-        // Organizar estudiantes dentro del grupo
-        int studentsInThisGroup = Math.Min(groupSize, orderedStudents.Count - studentIndex);
+        int groupSpacingX = Math.Max(300, form.ClientSize.Width / 3);
+        int groupSpacingY = 280;
+        int totalGroups = (int)Math.Ceiling((double)orderedStudents.Count / groupSize);
+        int studentIndex = 0;
         
-        // Calcular distribución óptima dentro del grupo
-        int studentsPerRowInGroup;
-        if (studentsInThisGroup <= 2)
-            studentsPerRowInGroup = studentsInThisGroup; // 1 o 2 en una fila
-        else if (studentsInThisGroup <= 4)
-            studentsPerRowInGroup = 2; // 2x2
-        else
-            studentsPerRowInGroup = 3; // 3x2 o 3x3
-        
-        for (int studentInGroup = 0; studentInGroup < studentsInThisGroup; studentInGroup++)
+        for (int groupIndex = 0; groupIndex < totalGroups && studentIndex < orderedStudents.Count; groupIndex++)
         {
-            int studentRow = studentInGroup / studentsPerRowInGroup;
-            int studentCol = studentInGroup % studentsPerRowInGroup;
+            var groupPosition = CalculateGroupPosition(groupIndex, groupSpacingX, groupSpacingY);
+            int studentsInGroup = Math.Min(groupSize, orderedStudents.Count - studentIndex);
             
-            int x = groupX + (studentCol * studentSpacingX);
-            int y = groupY + (studentRow * studentSpacingY);
+            PlaceStudentsInGroup(orderedStudents, ref studentIndex, 
+                groupPosition, studentsInGroup, groupIndex);
+        }
+    }
+    
+    private Point CalculateGroupPosition(int groupIndex, int spacingX, int spacingY)
+    {
+        int col = groupIndex % MAX_GROUPS_PER_ROW;
+        int row = groupIndex / MAX_GROUPS_PER_ROW;
+        
+        return new Point(
+            50 + (col * spacingX),
+            100 + (row * spacingY)
+        );
+    }
+    
+    private void PlaceStudentsInGroup(List<Student> students, ref int studentIndex,
+        Point groupPosition, int count, int groupId)
+    {
+        int studentsPerRow = count <= 2 ? count : (count <= 4 ? 2 : 3);
+        
+        for (int i = 0; i < count; i++)
+        {
+            int row = i / studentsPerRow;
+            int col = i % studentsPerRow;
             
-            // Asignar posición y grupo
-            orderedStudents[studentIndex].Position = new Point(x, y);
-            orderedStudents[studentIndex].GroupId = groupIndex;
-            group.Students.Add(orderedStudents[studentIndex]);
-            
+            students[studentIndex].Position = new Point(
+                groupPosition.X + (col * STUDENT_SPACING_X),
+                groupPosition.Y + (row * 120)
+            );
+            students[studentIndex].GroupId = groupId;
             studentIndex++;
         }
+    }
+}
+
+/// <summary>
+/// Crea los objetos Group después de organizar estudiantes
+/// </summary>
+private void CreateGroupsFromOrganizedStudents(int groupSize)
+{
+    groups.Clear();
+    
+    var studentGroups = students
+        .Where(s => s.GroupId != -1)
+        .GroupBy(s => s.GroupId)
+        .OrderBy(g => g.Key);
+    
+    foreach (var studentGroup in studentGroups)
+    {
+        Color groupColor = groupColors[studentGroup.Key % groupColors.Length];
+        Group group = new Group(studentGroup.Key, groupColor);
         
-        // Actualizar bounds del grupo con margen adicional
+        foreach (var student in studentGroup)
+        {
+            group.Students.Add(student);
+        }
+        
         group.UpdateBounds();
         
-        // Expandir bounds para evitar superposición
+        // Expandir bounds para mejor visualización
         group.Bounds = new Rectangle(
-            group.Bounds.X - 15,
-            group.Bounds.Y - 15,
-            group.Bounds.Width + 30,
-            group.Bounds.Height + 30
+            group.Bounds.X - GROUP_MARGIN,
+            group.Bounds.Y - GROUP_MARGIN,
+            group.Bounds.Width + (GROUP_MARGIN * 2),
+            group.Bounds.Height + (GROUP_MARGIN * 2)
         );
         
         groups.Add(group);
     }
-}
-
-/// <summary>
-/// Versión simplificada del método de hileras (ya existente, pero mejorado)
-/// </summary>
-private void ArrangeStudentsInRows(int studentsPerRow)
-{
-    var orderedStudents = students.OrderBy(s => s.Name).ToList();
-    
-    int startX = 80;
-    int startY = 140; // Ajustado para panel más pequeño
-    int studentSpacingX = 100;
-    int studentSpacingY = 130;
-    
-    // Ajustar espaciado si no cabe en la pantalla
-    int maxWidth = this.ClientSize.Width - 160; // Margen en ambos lados
-    int requiredWidth = studentsPerRow * studentSpacingX;
-    
-    if (requiredWidth > maxWidth)
-    {
-        studentSpacingX = maxWidth / studentsPerRow;
-    }
-    
-    for (int i = 0; i < orderedStudents.Count; i++)
-    {
-        int row = i / studentsPerRow;
-        int col = i % studentsPerRow;
-        
-        int x = startX + (col * studentSpacingX);
-        int y = startY + (row * studentSpacingY);
-        
-        orderedStudents[i].Position = new Point(x, y);
-    }
-}
-        
-
-
-
-        private void GenerateRandomGroups(int groupSize)
-        {
-            if (students.Count == 0)
-            {
-                MessageBox.Show("Primero carga las imágenes de los estudiantes.",
-                               "Sin estudiantes", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            // Limpiar grupos existentes
-            groups.Clear();
-            students.ForEach(s => s.GroupId = -1);
-
-            // Mezclar estudiantes aleatoriamente
-            var shuffledStudents = students.OrderBy(s => random.Next()).ToList();
-
-            int groupCount = (int)Math.Ceiling((double)shuffledStudents.Count / groupSize);
-            int studentIndex = 0;
-
-            for (int groupId = 0; groupId < groupCount; groupId++)
-            {
-                // Crear nuevo grupo
-                Color groupColor = groupColors[groupId % groupColors.Length];
-                Group group = new Group(groupId, groupColor);
-
-                // Asignar estudiantes al grupo
-                int studentsInThisGroup = Math.Min(groupSize, shuffledStudents.Count - studentIndex);
-                for (int i = 0; i < studentsInThisGroup; i++)
-                {
-                    var student = shuffledStudents[studentIndex];
-                    student.GroupId = groupId;
-                    group.Students.Add(student);
-                    studentIndex++;
-                }
-
-                // Organizar estudiantes en cuadrícula
-                OrganizeGroupLayout(group);
-                groups.Add(group);
-            }
-
-            MessageBox.Show($"Se crearon {groupCount} grupos con {groupSize} estudiantes cada uno.",
-                          "Grupos generados", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-            this.Invalidate();
-        }
-        
-        private void OrganizeGroupLayout(Group group)
-        {
-            if (!group.Students.Any()) return;
-            
-            int studentsPerRow = Math.Min(3, group.Students.Count);
-            
-            // Calcular posición base del grupo
-            int groupsPerRow = 3;
-            int groupWidth = 280;
-            int groupHeight = 250;
-            
-            int groupX = 50 + (group.Id % groupsPerRow) * groupWidth;
-            int groupY = 100 + (group.Id / groupsPerRow) * groupHeight; // +130 para dejar espacio panel
-            
-            // Posicionar estudiantes en cuadrícula
-            for (int i = 0; i < group.Students.Count; i++)
-            {
-                int row = i / studentsPerRow;
-                int col = i % studentsPerRow;
-                
-                int x = groupX + col * 90;
-                int y = groupY + row * 110;
-                
-                group.Students[i].Position = new Point(x, y);
-            }
-            
-            group.UpdateBounds();
-        }
+}   
 
         #endregion
 
