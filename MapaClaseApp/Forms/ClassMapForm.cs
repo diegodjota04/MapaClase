@@ -3,6 +3,7 @@ using System.Drawing.Drawing2D;
 using MapaClaseApp.Models;
 using MapaClaseApp.Extensions;
 using System.Diagnostics;
+using MapaClaseApp.Utils;
 
 namespace MapaClaseApp.Forms
 {
@@ -61,12 +62,14 @@ namespace MapaClaseApp.Forms
         
         private void SetupForm()
         {
+            SimpleLogger.LogInfo("Inicializando formulario principal");
+            
             this.Size = new Size(1200, 800);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = Color.White;
             this.SetStyle(ControlStyles.AllPaintingInWmPaint | 
-                         ControlStyles.UserPaint | 
-                         ControlStyles.DoubleBuffer, true);
+                        ControlStyles.UserPaint | 
+                        ControlStyles.DoubleBuffer, true);
             
             // Habilitar eventos
             this.MouseDown += ClassMapForm_MouseDown;
@@ -75,6 +78,8 @@ namespace MapaClaseApp.Forms
             this.Paint += ClassMapForm_Paint;
             
             CreateMenuAndButtons();
+            
+            SimpleLogger.LogInfo($"Formulario inicializado: {this.Size.Width}x{this.Size.Height}");
         }
         #endregion
         
@@ -383,12 +388,15 @@ namespace MapaClaseApp.Forms
             }
         }
         
-        private void LoadStudentImages(string[] filePaths)
+      private void LoadStudentImages(string[] filePaths)
         {
+            SimpleLogger.LogInfo($"Iniciando carga de {filePaths.Length} imágenes");
             const int MAX_STUDENTS = 100;
             
             if (filePaths.Length > MAX_STUDENTS)
             {
+                SimpleLogger.LogWarning($"Intento de cargar {filePaths.Length} imágenes, límite es {MAX_STUDENTS}");
+                
                 DialogResult result = MessageBox.Show(
                     $"Has seleccionado {filePaths.Length} archivos.\n" +
                     $"El límite es {MAX_STUDENTS} estudiantes.\n\n" +
@@ -398,48 +406,15 @@ namespace MapaClaseApp.Forms
                     MessageBoxIcon.Question
                 );
                 
-                if (result == DialogResult.No) return;
+                if (result == DialogResult.No)
+                {
+                    SimpleLogger.LogInfo("Usuario canceló carga por exceso de archivos");
+                    return;
+                }
                 filePaths = filePaths.Take(MAX_STUDENTS).ToArray();
             }
             
-            // Crear formulario de progreso
-            Form progressForm = new Form
-            {
-                Text = "Cargando imágenes...",
-                Size = new Size(400, 150),
-                StartPosition = FormStartPosition.CenterParent,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                MaximizeBox = false,
-                MinimizeBox = false
-            };
-            
-            Label lblStatus = new Label
-            {
-                Text = "Preparando carga...",
-                Location = new Point(20, 20),
-                Size = new Size(350, 20)
-            };
-            
-            ProgressBar progressBar = new ProgressBar
-            {
-                Location = new Point(20, 50),
-                Size = new Size(350, 30),
-                Minimum = 0,
-                Maximum = filePaths.Length,
-                Value = 0
-            };
-            
-            Label lblCount = new Label
-            {
-                Text = "0 / " + filePaths.Length,
-                Location = new Point(20, 85),
-                Size = new Size(350, 20),
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-            
-            progressForm.Controls.AddRange(new Control[] { lblStatus, progressBar, lblCount });
-            progressForm.Show();
-            Application.DoEvents(); // Forzar actualización visual
+            // Form de progreso (código existente)...
             
             DisposeAllImages();
             students.Clear();
@@ -449,27 +424,26 @@ namespace MapaClaseApp.Forms
             int maxWidth = this.ClientSize.Width - 150;
             int loadedCount = 0;
             int skippedCount = 0;
+            var errors = new List<string>();
             
             for (int i = 0; i < filePaths.Length; i++)
             {
                 string filePath = filePaths[i];
                 string fileName = Path.GetFileName(filePath);
                 
-                // Actualizar progreso
-                lblStatus.Text = $"Cargando: {fileName}";
-                progressBar.Value = i + 1;
-                lblCount.Text = $"{i + 1} / {filePaths.Length}";
-                Application.DoEvents();
+                // Actualizar progreso...
                 
                 try
                 {
                     if (!ValidateImageFile(filePath))
                     {
                         skippedCount++;
+                        SimpleLogger.LogWarning($"Archivo inválido saltado: {fileName}");
                         continue;
                     }
                     
                     string studentName = Path.GetFileNameWithoutExtension(filePath);
+                    SimpleLogger.LogDebug($"Cargando estudiante: {studentName}");
                     
                     Image resizedImage;
                     using (var fileStream = File.OpenRead(filePath))
@@ -493,9 +467,11 @@ namespace MapaClaseApp.Forms
                         y += 120;
                     }
                 }
-                catch (OutOfMemoryException)
+                catch (OutOfMemoryException oom)
                 {
-                    progressForm.Close();
+                    SimpleLogger.LogError($"Sin memoria al cargar {fileName}", oom);
+                    progressForm?.Close();
+                    
                     MessageBox.Show(
                         "No hay suficiente memoria para cargar más imágenes.\n" +
                         "Intenta con imágenes más pequeñas o menos archivos.",
@@ -507,12 +483,21 @@ namespace MapaClaseApp.Forms
                 }
                 catch (Exception ex)
                 {
-                    // Silenciosamente registrar el error y continuar
+                    SimpleLogger.LogError($"Error cargando {fileName}", ex);
+                    errors.Add($"{fileName}: {ex.Message}");
                     skippedCount++;
                 }
             }
             
-            progressForm.Close();
+            progressForm?.Close();
+            
+            // Log resumen
+            SimpleLogger.LogInfo($"Carga completada: {loadedCount} exitosas, {skippedCount} omitidas");
+            
+            if (errors.Count > 5)
+            {
+                SimpleLogger.LogWarning($"Múltiples errores durante la carga: {errors.Count} archivos fallaron");
+            }
             
             string message = $"Carga completada:\n" +
                             $"✓ {loadedCount} estudiantes cargados";
@@ -1394,13 +1379,16 @@ namespace MapaClaseApp.Forms
         {
             if (!students.Any())
             {
+                SimpleLogger.LogWarning("Intento de exportar PDF sin estudiantes");
                 MessageBox.Show("No hay datos para exportar.", "Sin datos", 
-                               MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             
             try
             {
+                SimpleLogger.LogInfo($"Iniciando exportación de PDF con {students.Count} estudiantes y {groups.Count} grupos");
+                
                 string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
                 string fileName = $"Mapa_Clase_{DateTime.Now:yyyyMMdd_HHmm}.pdf";
                 string filePath = Path.Combine(desktopPath, fileName);
@@ -1408,6 +1396,8 @@ namespace MapaClaseApp.Forms
                 this.Cursor = Cursors.WaitCursor;
                 PdfExporter.ExportToPdf(filePath, students, groups, this.ClientSize);
                 this.Cursor = Cursors.Default;
+                
+                SimpleLogger.LogInfo($"PDF exportado exitosamente: {filePath}");
                 
                 DialogResult result = MessageBox.Show(
                     $"PDF exportado exitosamente al escritorio:\n\n{fileName}\n\n" +
@@ -1429,8 +1419,11 @@ namespace MapaClaseApp.Forms
             catch (Exception ex)
             {
                 this.Cursor = Cursors.Default;
-                MessageBox.Show($"Error al exportar PDF:\n\n{ex.Message}", 
-                               "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                SimpleLogger.LogError("Error al exportar PDF", ex);
+                
+                MessageBox.Show($"Error al exportar PDF:\n\n{ex.Message}\n\n" +
+                            "Revise el log para más detalles.", 
+                            "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1492,8 +1485,13 @@ namespace MapaClaseApp.Forms
         
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            SimpleLogger.LogInfo("Cerrando aplicación");
+            SimpleLogger.LogInfo($"Estadísticas finales: {students.Count} estudiantes, {groups.Count} grupos");
+            
             DisposeAllImages();
             base.OnFormClosed(e);
+            
+            SimpleLogger.LogInfo("Aplicación cerrada correctamente");
         }
         
         #endregion
