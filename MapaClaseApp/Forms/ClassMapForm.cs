@@ -33,6 +33,8 @@ namespace MapaClaseApp.Forms
         private Student? draggedStudent = null;
         private Point dragOffset;
         private Random random = new Random();
+        private Group? highlightedGroup = null; // Grupo resaltado durante drag
+        private bool isDragging = false;        // Estado de arrastre
         
         // Colores para grupos
         private readonly Color[] groupColors = {
@@ -215,40 +217,63 @@ namespace MapaClaseApp.Forms
         }
 
         /// <summary>
-        /// Agrega todos los botones de acción
+        /// Agrega todos los botones de acción ocn Tooltips
         /// </summary>
         private int AddActionButtons(List<Control> controls, int startX)
         {
             int x = startX;
             int y = 15;
             
+            // Crear ToolTip component
+            ToolTip toolTip = new ToolTip
+            {
+                AutoPopDelay = 5000,
+                InitialDelay = 500,
+                ReshowDelay = 200,
+                ShowAlways = true,
+                ToolTipIcon = ToolTipIcon.Info,
+                ToolTipTitle = "Ayuda"
+            };
+            
+            // Botón 1: Cargar Imágenes
             var btnLoadImages = CreateStyledButton("📁 Cargar", x, y, 80, Color.FromArgb(70, 130, 180));
             btnLoadImages.Click += BtnLoadImages_Click;
+            toolTip.SetToolTip(btnLoadImages, "Cargar fotos de estudiantes (JPG, PNG, BMP).\nMáximo 100 estudiantes.");
             controls.Add(btnLoadImages);
             x += 80 + BUTTON_SPACING;
             
+            // Botón 2: Organizar
             var btnOrganize = CreateStyledButton("📐 Organizar", x, y, 90, Color.FromArgb(75, 0, 130));
             btnOrganize.Click += BtnOrganize_Click;
+            toolTip.SetToolTip(btnOrganize, "Organizar estudiantes según el estilo seleccionado.\nConfigura las opciones primero.");
             controls.Add(btnOrganize);
             x += 90 + BUTTON_SPACING;
             
+            // Botón 3: Guardar PDF
             var btnSavePdf = CreateStyledButton("📄 Guardar", x, y, 90, Color.FromArgb(220, 20, 60));
             btnSavePdf.Click += BtnSavePdf_Click;
+            toolTip.SetToolTip(btnSavePdf, "Exportar mapa a PDF en el escritorio.\nIncluye fotos y lista de grupos.");
             controls.Add(btnSavePdf);
             x += 90 + BUTTON_SPACING;
             
+            // Botón 4: Cargar Layout
             var btnLoadLayout = CreateStyledButton("📂 Cargar", x, y, 80, Color.FromArgb(106, 90, 205));
             btnLoadLayout.Click += BtnLoadLayout_Click;
+            toolTip.SetToolTip(btnLoadLayout, "Cargar una distribución guardada previamente (.classmap).");
             controls.Add(btnLoadLayout);
             x += 80 + BUTTON_SPACING;
             
+            // Botón 5: Limpiar Grupos
             var btnClear = CreateStyledButton("🗑️ Limpiar", x, y, 80, Color.FromArgb(255, 140, 0));
             btnClear.Click += BtnClearGroups_Click;
+            toolTip.SetToolTip(btnClear, "Eliminar todos los grupos.\nLos estudiantes mantienen su posición.");
             controls.Add(btnClear);
             x += 80 + BUTTON_SPACING;
             
+            // Botón 6: Reiniciar
             var btnReset = CreateStyledButton("🔄 Reiniciar", x, y, 80, Color.FromArgb(128, 128, 128));
             btnReset.Click += BtnReset_Click;
+            toolTip.SetToolTip(btnReset, "Reiniciar completamente.\nElimina estudiantes y grupos.");
             controls.Add(btnReset);
             x += 80 + BUTTON_SPACING;
             
@@ -377,6 +402,45 @@ namespace MapaClaseApp.Forms
                 filePaths = filePaths.Take(MAX_STUDENTS).ToArray();
             }
             
+            // Crear formulario de progreso
+            Form progressForm = new Form
+            {
+                Text = "Cargando imágenes...",
+                Size = new Size(400, 150),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+            
+            Label lblStatus = new Label
+            {
+                Text = "Preparando carga...",
+                Location = new Point(20, 20),
+                Size = new Size(350, 20)
+            };
+            
+            ProgressBar progressBar = new ProgressBar
+            {
+                Location = new Point(20, 50),
+                Size = new Size(350, 30),
+                Minimum = 0,
+                Maximum = filePaths.Length,
+                Value = 0
+            };
+            
+            Label lblCount = new Label
+            {
+                Text = "0 / " + filePaths.Length,
+                Location = new Point(20, 85),
+                Size = new Size(350, 20),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            
+            progressForm.Controls.AddRange(new Control[] { lblStatus, progressBar, lblCount });
+            progressForm.Show();
+            Application.DoEvents(); // Forzar actualización visual
+            
             DisposeAllImages();
             students.Clear();
             groups.Clear();
@@ -386,8 +450,17 @@ namespace MapaClaseApp.Forms
             int loadedCount = 0;
             int skippedCount = 0;
             
-            foreach (string filePath in filePaths)
+            for (int i = 0; i < filePaths.Length; i++)
             {
+                string filePath = filePaths[i];
+                string fileName = Path.GetFileName(filePath);
+                
+                // Actualizar progreso
+                lblStatus.Text = $"Cargando: {fileName}";
+                progressBar.Value = i + 1;
+                lblCount.Text = $"{i + 1} / {filePaths.Length}";
+                Application.DoEvents();
+                
                 try
                 {
                     if (!ValidateImageFile(filePath))
@@ -422,6 +495,7 @@ namespace MapaClaseApp.Forms
                 }
                 catch (OutOfMemoryException)
                 {
+                    progressForm.Close();
                     MessageBox.Show(
                         "No hay suficiente memoria para cargar más imágenes.\n" +
                         "Intenta con imágenes más pequeñas o menos archivos.",
@@ -433,11 +507,12 @@ namespace MapaClaseApp.Forms
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error cargando {Path.GetFileName(filePath)}: {ex.Message}", 
-                                  "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    // Silenciosamente registrar el error y continuar
                     skippedCount++;
                 }
             }
+            
+            progressForm.Close();
             
             string message = $"Carga completada:\n" +
                             $"✓ {loadedCount} estudiantes cargados";
@@ -450,7 +525,7 @@ namespace MapaClaseApp.Forms
             if (loadedCount > 0)
             {
                 MessageBox.Show(message, "Resultado de carga", 
-                              MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             
             this.Invalidate();
@@ -520,36 +595,68 @@ namespace MapaClaseApp.Forms
             }
         }
         
-        private void ClassMapForm_MouseMove(object? sender, MouseEventArgs e)
+       private void ClassMapForm_MouseMove(object? sender, MouseEventArgs e)
         {
             if (draggedStudent != null && e.Button == MouseButtons.Left)
             {
+                isDragging = true;
+                
+                // Actualizar posición del estudiante
                 draggedStudent.Position = new Point(
                     Math.Max(0, Math.Min(e.X - dragOffset.X, this.ClientSize.Width - draggedStudent.Size.Width)),
                     Math.Max(70, Math.Min(e.Y - dragOffset.Y, this.ClientSize.Height - draggedStudent.Size.Height))
                 );
                 
+                // Actualizar grupo si está en uno
                 if (draggedStudent.GroupId != -1)
                 {
                     var group = groups.FirstOrDefault(g => g.Id == draggedStudent.GroupId);
                     group?.UpdateBounds();
                 }
                 
+                // Detectar grupo bajo el cursor para resaltarlo
+                Group? newHighlightedGroup = null;
+                foreach (var group in groups)
+                {
+                    if (group.Bounds.Contains(e.Location) && group.Id != draggedStudent.GroupId)
+                    {
+                        newHighlightedGroup = group;
+                        break;
+                    }
+                }
+                
+                // Si cambió el grupo resaltado, redibujar
+                if (highlightedGroup != newHighlightedGroup)
+                {
+                    highlightedGroup = newHighlightedGroup;
+                    this.Invalidate();
+                }
+                
                 this.Invalidate();
             }
             else
             {
+                // Cambiar cursor según contexto
                 Student? studentUnderMouse = GetStudentAtPosition(e.Location);
                 this.Cursor = studentUnderMouse != null ? Cursors.Hand : Cursors.Default;
+                
+                // Si no estamos arrastrando, limpiar el grupo resaltado
+                if (highlightedGroup != null)
+                {
+                    highlightedGroup = null;
+                    this.Invalidate();
+                }
             }
         }
         
-        private void ClassMapForm_MouseUp(object? sender, MouseEventArgs e)
+       private void ClassMapForm_MouseUp(object? sender, MouseEventArgs e)
         {
             if (draggedStudent != null)
             {
                 CheckGroupTransfer(draggedStudent, e.Location);
                 draggedStudent = null;
+                isDragging = false;
+                highlightedGroup = null; // Limpiar grupo resaltado
                 this.Cursor = Cursors.Default;
                 this.Invalidate();
             }
@@ -925,26 +1032,32 @@ namespace MapaClaseApp.Forms
         
         #region Renderizado
         
-        private void ClassMapForm_Paint(object? sender, PaintEventArgs e)
+       private void ClassMapForm_Paint(object? sender, PaintEventArgs e)
         {
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             
+            // Dibujar grupos primero
             foreach (var group in groups.Where(gr => gr.Students.Any()))
             {
                 DrawGroup(g, group);
             }
             
+            // Dibujar estudiantes
             foreach (var student in students)
             {
                 DrawStudent(g, student);
             }
             
+            // Mensaje de bienvenida si no hay estudiantes
             if (!students.Any())
             {
                 DrawWelcomeMessage(g);
             }
+            
+            // NUEVO: Dibujar barra de estado
+            DrawStatusBar(g);  // ← ESTA ES LA NUEVA LÍNEA
         }
         
         private void DrawWelcomeMessage(Graphics g)
@@ -962,20 +1075,59 @@ namespace MapaClaseApp.Forms
             g.DrawString(message, font, brush, location);
         }
         
-        private void DrawGroup(Graphics g, Group group)
+       private void DrawGroup(Graphics g, Group group)
         {
             if (!group.Students.Any()) return;
             
-            using Brush brush = new SolidBrush(group.Color);
+            // Determinar si este grupo está resaltado
+            bool isHighlighted = (highlightedGroup != null && highlightedGroup.Id == group.Id);
+            
+            // Ajustar color si está resaltado
+            Color fillColor = isHighlighted 
+                ? Color.FromArgb(150, group.Color) // Más opaco cuando está resaltado
+                : group.Color;
+            
+            Color borderColor = isHighlighted
+                ? Color.FromArgb(255, group.Color) // Borde más intenso
+                : Color.FromArgb(200, group.Color);
+            
+            int borderWidth = isHighlighted ? 4 : 3;
+            
+            // Dibujar fondo del grupo
+            using Brush brush = new SolidBrush(fillColor);
             g.FillRoundedRectangle(brush, group.Bounds, 15);
             
-            using Pen pen = new Pen(Color.FromArgb(200, group.Color), 3);
+            // Dibujar borde del grupo (más grueso si está resaltado)
+            using Pen pen = new Pen(borderColor, borderWidth);
+            if (isHighlighted)
+            {
+                pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
+            }
             g.DrawRoundedRectangle(pen, group.Bounds, 15);
             
+            // Si está resaltado, agregar efecto de "brillo"
+            if (isHighlighted)
+            {
+                using Brush glowBrush = new SolidBrush(Color.FromArgb(30, Color.Yellow));
+                Rectangle glowRect = new Rectangle(
+                    group.Bounds.X - 2,
+                    group.Bounds.Y - 2,
+                    group.Bounds.Width + 4,
+                    group.Bounds.Height + 4
+                );
+                g.FillRoundedRectangle(glowBrush, glowRect, 17);
+            }
+            
+            // Dibujar etiqueta del grupo
             using Font font = new Font("Segoe UI", 12, FontStyle.Bold);
             using Brush textBrush = new SolidBrush(Color.FromArgb(80, 80, 80));
             
             string label = group.Label;
+            if (isHighlighted && isDragging)
+            {
+                label += " (Soltar aquí)";
+            }
+            
             SizeF textSize = g.MeasureString(label, font);
             
             RectangleF textBg = new RectangleF(
@@ -1029,7 +1181,50 @@ namespace MapaClaseApp.Forms
             );
             g.DrawString(student.Name, font, textBrush, textLocation);
         }
-        
+        private void DrawStatusBar(Graphics g)
+        {
+            if (!students.Any()) return;
+            
+            // Crear área de estado en la parte inferior
+            int barHeight = 30;
+            Rectangle statusBar = new Rectangle(
+                0, 
+                this.ClientSize.Height - barHeight,
+                this.ClientSize.Width,
+                barHeight
+            );
+            
+            // Fondo semi-transparente
+            using Brush bgBrush = new SolidBrush(Color.FromArgb(200, 240, 240, 240));
+            g.FillRectangle(bgBrush, statusBar);
+            
+            // Línea superior
+            using Pen borderPen = new Pen(Color.Gray, 1);
+            g.DrawLine(borderPen, 0, statusBar.Y, this.ClientSize.Width, statusBar.Y);
+            
+            // Preparar texto
+            using Font font = new Font("Segoe UI", 9);
+            using Brush textBrush = new SolidBrush(Color.DarkSlateGray);
+            
+            // Información a mostrar
+            string info = $"📚 Estudiantes: {students.Count} | ";
+            info += $"👥 Grupos: {groups.Count} | ";
+            
+            int studentsInGroups = students.Count(s => s.GroupId != -1);
+            int studentsFree = students.Count - studentsInGroups;
+            
+            info += $"✓ En grupos: {studentsInGroups} | ";
+            info += $"✗ Libres: {studentsFree}";
+            
+            // Si está arrastrando, mostrar ayuda
+            if (isDragging && draggedStudent != null)
+            {
+                info += " | 💡 Arrastra sobre un grupo para transferir";
+            }
+            
+            // Dibujar texto
+            g.DrawString(info, font, textBrush, new PointF(10, statusBar.Y + 7));
+        }
         #endregion
         
         #region Funcionalidades de Guardado y Exportación
