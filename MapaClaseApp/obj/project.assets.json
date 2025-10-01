@@ -178,11 +178,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\diego\\MapaClaseApp\\MapaClaseApp\\MapaClaseApp.csproj",
+      "projectUniqueName": "C:\\Users\\diego\\MapaClaseApp\\mapaclaseapp\\MapaClaseApp.csproj",
       "projectName": "MapaClaseApp",
-      "projectPath": "C:\\Users\\diego\\MapaClaseApp\\MapaClaseApp\\MapaClaseApp.csproj",
+      "projectPath": "C:\\Users\\diego\\MapaClaseApp\\mapaclaseapp\\MapaClaseApp.csproj",
       "packagesPath": "C:\\Users\\diego\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\diego\\MapaClaseApp\\MapaClaseApp\\obj\\",
+      "outputPath": "C:\\Users\\diego\\MapaClaseApp\\mapaclaseapp\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\diego\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -251,7 +251,7 @@
       "code": "NU1701",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "Package 'PDFsharp 1.50.5147' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0-windows7.0'. This package may not be fully compatible with your project.",
+      "message": "El paquete \"PDFsharp 1.50.5147\" se restauró con \".NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1\" en lugar de la plataforma de destino del proyecto \"net8.0-windows7.0\". Puede que el paquete no sea totalmente compatible con el proyecto.",
       "libraryId": "PDFsharp",
       "targetGraphs": [
         "net8.0-windows7.0"

@@ -388,15 +388,17 @@ namespace MapaClaseApp.Forms
             }
         }
         
-      private void LoadStudentImages(string[] filePaths)
+// ========================================
+// CORRECCIÓN: LoadStudentImages con progressForm correctamente declarado
+// Reemplaza todo el método LoadStudentImages con esta versión
+// ========================================
+
+private void LoadStudentImages(string[] filePaths)
         {
-            SimpleLogger.LogInfo($"Iniciando carga de {filePaths.Length} imágenes");
             const int MAX_STUDENTS = 100;
             
             if (filePaths.Length > MAX_STUDENTS)
             {
-                SimpleLogger.LogWarning($"Intento de cargar {filePaths.Length} imágenes, límite es {MAX_STUDENTS}");
-                
                 DialogResult result = MessageBox.Show(
                     $"Has seleccionado {filePaths.Length} archivos.\n" +
                     $"El límite es {MAX_STUDENTS} estudiantes.\n\n" +
@@ -406,15 +408,57 @@ namespace MapaClaseApp.Forms
                     MessageBoxIcon.Question
                 );
                 
-                if (result == DialogResult.No)
-                {
-                    SimpleLogger.LogInfo("Usuario canceló carga por exceso de archivos");
-                    return;
-                }
+                if (result == DialogResult.No) return;
                 filePaths = filePaths.Take(MAX_STUDENTS).ToArray();
             }
             
-            // Form de progreso (código existente)...
+            // DECLARAR progressForm FUERA del bloque para que sea accesible en todo el método
+            Form? progressForm = null;
+            ProgressBar? progressBar = null;
+            Label? lblStatus = null;
+            Label? lblCount = null;
+            
+            // Solo crear el formulario si hay archivos para cargar
+            if (filePaths.Length > 0)
+            {
+                progressForm = new Form
+                {
+                    Text = "Cargando imágenes...",
+                    Size = new Size(400, 150),
+                    StartPosition = FormStartPosition.CenterParent,
+                    FormBorderStyle = FormBorderStyle.FixedDialog,
+                    MaximizeBox = false,
+                    MinimizeBox = false
+                };
+                
+                lblStatus = new Label
+                {
+                    Text = "Preparando carga...",
+                    Location = new Point(20, 20),
+                    Size = new Size(350, 20)
+                };
+                
+                progressBar = new ProgressBar
+                {
+                    Location = new Point(20, 50),
+                    Size = new Size(350, 30),
+                    Minimum = 0,
+                    Maximum = filePaths.Length,
+                    Value = 0
+                };
+                
+                lblCount = new Label
+                {
+                    Text = "0 / " + filePaths.Length,
+                    Location = new Point(20, 85),
+                    Size = new Size(350, 20),
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+                
+                progressForm.Controls.AddRange(new Control[] { lblStatus, progressBar, lblCount });
+                progressForm.Show();
+                Application.DoEvents();
+            }
             
             DisposeAllImages();
             students.Clear();
@@ -431,7 +475,14 @@ namespace MapaClaseApp.Forms
                 string filePath = filePaths[i];
                 string fileName = Path.GetFileName(filePath);
                 
-                // Actualizar progreso...
+                // Actualizar progreso si el form existe
+                if (progressForm != null && lblStatus != null && progressBar != null && lblCount != null)
+                {
+                    lblStatus.Text = $"Cargando: {fileName}";
+                    progressBar.Value = i + 1;
+                    lblCount.Text = $"{i + 1} / {filePaths.Length}";
+                    Application.DoEvents();
+                }
                 
                 try
                 {
@@ -470,6 +521,8 @@ namespace MapaClaseApp.Forms
                 catch (OutOfMemoryException oom)
                 {
                     SimpleLogger.LogError($"Sin memoria al cargar {fileName}", oom);
+                    
+                    // Cerrar el formulario de progreso si existe
                     progressForm?.Close();
                     
                     MessageBox.Show(
@@ -489,7 +542,9 @@ namespace MapaClaseApp.Forms
                 }
             }
             
+            // Cerrar el formulario de progreso si existe
             progressForm?.Close();
+            progressForm?.Dispose();
             
             // Log resumen
             SimpleLogger.LogInfo($"Carga completada: {loadedCount} exitosas, {skippedCount} omitidas");
@@ -515,7 +570,114 @@ namespace MapaClaseApp.Forms
             
             this.Invalidate();
         }
-        
+
+        // ========================================
+        // ALTERNATIVA: Si no quieres usar el formulario de progreso
+        // ========================================
+
+        private void LoadStudentImages_Simple(string[] filePaths)
+        {
+            const int MAX_STUDENTS = 100;
+            
+            if (filePaths.Length > MAX_STUDENTS)
+            {
+                DialogResult result = MessageBox.Show(
+                    $"Has seleccionado {filePaths.Length} archivos.\n" +
+                    $"El límite es {MAX_STUDENTS} estudiantes.\n\n" +
+                    $"¿Cargar solo los primeros {MAX_STUDENTS}?",
+                    "Demasiados archivos",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question
+                );
+                
+                if (result == DialogResult.No) return;
+                filePaths = filePaths.Take(MAX_STUDENTS).ToArray();
+            }
+            
+            // Mostrar cursor de espera
+            this.Cursor = Cursors.WaitCursor;
+            
+            DisposeAllImages();
+            students.Clear();
+            groups.Clear();
+            
+            int x = 50, y = 90;
+            int maxWidth = this.ClientSize.Width - 150;
+            int loadedCount = 0;
+            int skippedCount = 0;
+            
+            foreach (string filePath in filePaths)
+            {
+                try
+                {
+                    if (!ValidateImageFile(filePath))
+                    {
+                        skippedCount++;
+                        continue;
+                    }
+                    
+                    string studentName = Path.GetFileNameWithoutExtension(filePath);
+                    
+                    Image resizedImage;
+                    using (var fileStream = File.OpenRead(filePath))
+                    using (var originalImage = Image.FromStream(fileStream))
+                    {
+                        resizedImage = ResizeImage(originalImage, 80, 100);
+                    }
+                    
+                    Student student = new Student(studentName, resizedImage)
+                    {
+                        Position = new Point(x, y)
+                    };
+                    
+                    students.Add(student);
+                    loadedCount++;
+                    
+                    x += 90;
+                    if (x > maxWidth)
+                    {
+                        x = 50;
+                        y += 120;
+                    }
+                }
+                catch (OutOfMemoryException)
+                {
+                    MessageBox.Show(
+                        "No hay suficiente memoria para cargar más imágenes.\n" +
+                        "Intenta con imágenes más pequeñas o menos archivos.",
+                        "Memoria insuficiente",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error cargando {Path.GetFileName(filePath)}: {ex.Message}", 
+                                "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    skippedCount++;
+                }
+            }
+            
+            // Restaurar cursor
+            this.Cursor = Cursors.Default;
+            
+            string message = $"Carga completada:\n" +
+                            $"✓ {loadedCount} estudiantes cargados";
+            
+            if (skippedCount > 0)
+            {
+                message += $"\n✗ {skippedCount} archivos omitidos";
+            }
+            
+            if (loadedCount > 0)
+            {
+                MessageBox.Show(message, "Resultado de carga", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            
+            this.Invalidate();
+        }       
         private bool ValidateImageFile(string filePath)
         {
             const long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB

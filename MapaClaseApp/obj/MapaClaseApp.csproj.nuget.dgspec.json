@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\diego\\MapaClaseApp\\MapaClaseApp\\MapaClaseApp.csproj": {}
+    "C:\\Users\\diego\\MapaClaseApp\\mapaclaseapp\\MapaClaseApp.csproj": {}
   },
   "projects": {
-    "C:\\Users\\diego\\MapaClaseApp\\MapaClaseApp\\MapaClaseApp.csproj": {
+    "C:\\Users\\diego\\MapaClaseApp\\mapaclaseapp\\MapaClaseApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\diego\\MapaClaseApp\\MapaClaseApp\\MapaClaseApp.csproj",
+        "projectUniqueName": "C:\\Users\\diego\\MapaClaseApp\\mapaclaseapp\\MapaClaseApp.csproj",
         "projectName": "MapaClaseApp",
-        "projectPath": "C:\\Users\\diego\\MapaClaseApp\\MapaClaseApp\\MapaClaseApp.csproj",
+        "projectPath": "C:\\Users\\diego\\MapaClaseApp\\mapaclaseapp\\MapaClaseApp.csproj",
         "packagesPath": "C:\\Users\\diego\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\diego\\MapaClaseApp\\MapaClaseApp\\obj\\",
+        "outputPath": "C:\\Users\\diego\\MapaClaseApp\\mapaclaseapp\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\diego\\AppData\\Roaming\\NuGet\\NuGet.Config"
